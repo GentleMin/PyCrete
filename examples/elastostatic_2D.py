@@ -8,7 +8,7 @@ Jingtao Min @ ETH Zurich, 2022
 
 import numpy as np
 import matplotlib.pyplot as plt
-from fem_utils import mesh, quad
+from fem import mesh, quad
 
 
 """Physics setup"""
