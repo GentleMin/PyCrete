@@ -16,6 +16,10 @@ quad_1d = {
              np.array([1, 1])],
     "3-pt": [np.array([-1, 0, +1])*np.sqrt(3/5), 
              np.array([5, 8, 5])/9],
+    "5-pt": [np.array([-np.sqrt(5 + 2*np.sqrt(10/7)), -np.sqrt(5 - 2*np.sqrt(10/7)), 0, 
+                       np.sqrt(5 - 2*np.sqrt(10/7)), np.sqrt(5 + 2*np.sqrt(10/7))])/3, 
+             np.array([(322 - 13*np.sqrt(70))/900, (322 + 13*np.sqrt(70))/900, 128/225, 
+                       (322 + 13*np.sqrt(70))/900, (322 - 13*np.sqrt(70))/900])],
 }
 
 

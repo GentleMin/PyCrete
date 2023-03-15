@@ -68,8 +68,8 @@ def dirichlet_bc(x, y, x_range, y_range, Tleft=0, Tright=0, Tbtm=0, Ttop=100):
 
 
 """Mesh setup"""
-n_elem_x = 8                # Number of elements in x dir
-n_elem_y = 8
+n_elem_x = 16                # Number of elements in x dir
+n_elem_y = 16
 n_elem_tot = n_elem_y*n_elem_x
 n_node_x = n_elem_x + 1     # Number of nodes in x dir
 n_node_y = n_elem_y + 1
@@ -160,7 +160,7 @@ if steady_state:
     rem_idx = [idx for idx in range(n_node_tot) if idx not in bc_dof]
     b = b[rem_idx]
     L = L[np.ix_(rem_idx, rem_idx)]
-
+    
     # Solve
     T = np.zeros(T_init.shape)
     T[rem_idx] = splinalg.spsolve(L, b)

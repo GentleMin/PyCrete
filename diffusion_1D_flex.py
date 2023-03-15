@@ -13,7 +13,7 @@ import numpy as np
 """Physics setup"""
 x_range = [-5, 5]               # Domain range
 Lx = x_range[1] - x_range[0]    # Domain length
-Time_tot = 50                  # Simulation length
+Time_tot = 2                  # Simulation length
 Tmax = 0
 sigma = 1
 
@@ -138,19 +138,19 @@ for i_elem in range(n_elem):
 
 fig = plt.figure(figsize=(9, 6))
 
-print(dx_elem)
-print(jacobian)
-print(M_local)
-print(K_local)
-print(F_local)
+# print(dx_elem)
+# print(jacobian)
+# print(M_local)
+# print(K_local)
+# print(F_local)
 
 """Time-stepping"""
 for i_step, t_step in enumerate(t_steps[:-1]):
     T_prev = T_records[i_step, :]
-    L = M_global/dt + K_global
-    b = M_global/dt @ T_prev + F_global
-    # L = K_global
-    # b = F_global
+    # L = M_global/dt + K_global
+    # b = M_global/dt @ T_prev + F_global
+    L = K_global
+    b = F_global
     
     bc_dirichlet, bc_dof, bc_val = generate_bc(g_coord, t_steps[i_step+1], g_coord_tot=g_coord_tot)
     # Apply BC (reduced matrix version)
@@ -159,6 +159,8 @@ for i_step, t_step in enumerate(t_steps[:-1]):
         rem_idx = [idx for idx in range(n_node_tot) if idx not in bc_dof]
         b = b[rem_idx]
         L = L[np.ix_(rem_idx, rem_idx)]
+        
+        print(np.linalg.cond(L))
         
         # Solving
         T_rem = np.linalg.solve(L, b)
@@ -186,4 +188,4 @@ for i_step, t_step in enumerate(t_steps[:-1]):
 plt.show()
 
 T_compare = calc_steady_state(g_coord_tot, 1, 1, 0, 0, Lx)
-print(np.abs(T_compare - T_records[-1, :]))
+# print(np.abs(T_compare - T_records[-1, :]))
