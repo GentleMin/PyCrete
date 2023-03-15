@@ -1,1 +1,11 @@
+# Jupyter notebook checkpoints
+.ipynb_checkpoints
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# VSCode plugin files
+.VSCodeCounter
+
+# Large test data files (historical)
 output/
