@@ -30,6 +30,9 @@ def Bs2_S2(s):
 
 """Introducing coefficients"""
 
+def m_u(s):
+    return s**2*(1 - s**2)
+
 def k_uu2(s):
     return Pm/Lu*s**2*(1 - s**2)
 
@@ -40,7 +43,10 @@ def k_ub1(s):
     return s*(1 - s**2)
     
 def k_ub0(s):
-    return 2 - s**2
+    return 2 - 3*s**2
+
+def m_b(s):
+    return s
 
 def k_bu1(s, Bs2):
     return s**2*Bs2(s)
@@ -64,37 +70,43 @@ def dk_bb2(s):
 
 """Test case: standard wave equation"""
 
-def k_uu2(s):
-    return np.zeros(s.shape)
+# def m_u(s):
+#     return np.ones(s.shape)
 
-def k_uu1(s):
-    return np.zeros(s.shape)
+# def k_uu2(s):
+#     return np.zeros(s.shape)
 
-def k_ub1(s):
-    return np.ones(s.shape)
+# def k_uu1(s):
+#     return np.zeros(s.shape)
+
+# def k_ub1(s):
+#     return np.ones(s.shape)
     
-def k_ub0(s):
-    return np.zeros(s.shape)
+# def k_ub0(s):
+#     return np.zeros(s.shape)
 
-def k_bu1(s, Bs2):
-    return np.ones(s.shape)
+# def k_bu1(s, Bs2):
+#     return np.ones(s.shape)
 
-def k_bb2(s):
-    return np.zeros(s.shape)
+# def m_b(s):
+#     return np.ones(s.shape)
 
-def k_bb1(s):
-    return np.zeros(s.shape)
+# def k_bb2(s):
+#     return np.zeros(s.shape)
 
-def k_bb0(s):
-    return np.zeros(s.shape)
+# def k_bb1(s):
+#     return np.zeros(s.shape)
 
-# Necessary derivatives
+# def k_bb0(s):
+#     return np.zeros(s.shape)
 
-def dk_uu2(s):
-    return np.zeros(s.shape)
+# # Necessary derivatives
 
-def dk_bb2(s):
-    return np.zeros(s.shape)
+# def dk_uu2(s):
+#     return np.zeros(s.shape)
+
+# def dk_bb2(s):
+#     return np.zeros(s.shape)
 
 
 """Mesh generation"""
@@ -172,7 +184,8 @@ for i_elem in range(n_elem):
     K_mat[np.ix_(dof_temp_u, dof_temp_b)] += Kub1 + Kub0
     
     # Mu submatrix
-    Mu = np.sum(wt_quad*jac_temp*np.stack([np.outer(N_vals[:, i], N_vals[:, i]) for i in range(n_quad)], axis=-1), axis=-1)
+    Mu = np.stack([np.outer(N_vals[:, i], N_vals[:, i]) for i in range(n_quad)], axis=-1)
+    Mu = np.sum(wt_quad*jac_temp*m_u(pt_quad)*Mu, axis=-1)
     M_mat[np.ix_(dof_temp_u, dof_temp_u)] += Mu
     
     # Kbu submatrix
@@ -190,7 +203,8 @@ for i_elem in range(n_elem):
     K_mat[np.ix_(dof_temp_b, dof_temp_b)] += Kbb2 + Kbb1 + Kbb0
     
     # Mb submatrix
-    Mb = np.sum(wt_quad*jac_temp*np.stack([np.outer(N_vals[:, i], N_vals[:, i]) for i in range(n_quad)], axis=-1), axis=-1)
+    Mb = np.stack([np.outer(N_vals[:, i], N_vals[:, i]) for i in range(n_quad)], axis=-1)
+    Mb = np.sum(wt_quad*jac_temp*m_b(pt_quad)*Mb, axis=-1)
     M_mat[np.ix_(dof_temp_b, dof_temp_b)] += Mb
 
 
@@ -211,7 +225,7 @@ print(np.linalg.cond(K_mat), np.linalg.cond(M_mat))
 w, v = linalg.eig(K_mat, M_mat)
 # print(w)
 
-with h5py.File("./output/eigenmodes_1Dwave_n50.h5", 'x') as f_write:
+with h5py.File("./output/eigenmodes_n50_v2.h5", 'x') as f_write:
     f_write.create_dataset("nodes", data=gcoord_node)
     f_write.create_dataset("cond", data=np.array([np.linalg.cond(K_mat), np.linalg.cond(M_mat)]))
     idx_sort = np.argsort(w)
