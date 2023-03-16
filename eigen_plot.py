@@ -15,7 +15,6 @@ def read_eig(in_name):
         eigfuns = f["eigenfuns"][()]
     return xcoord, eigvals, eigfuns
 
-
 def filter_sort_eig(eigvals, eigfuns):
     # Filter the slow-decaying modes (these are usually the non-spurious ones)
     idx_filtered = np.abs(np.imag(eigvals)) > 0.5*np.abs(np.real(eigvals))
@@ -27,8 +26,19 @@ def filter_sort_eig(eigvals, eigfuns):
     eigfuns = eigfuns[:, idx_sorted]
     return eigvals, eigfuns
 
+def plot_solution(xcoord, eigfun, yvar=None, ax=None):
+    if ax is None:
+        _, ax = plt.subplots(nrows=1, ncols=1)
+    ax.clear()
+    ax.plot(xcoord, np.imag(eigfun), 'r-', label="Im")
+    ax.plot(xcoord, np.real(eigfun), 'b-', label="Re")
+    ax.legend()
+    ax.set_xlabel('s')
+    if yvar is not None:
+        ax.set_title(yvar)
+    return ax
 
-def plot_eigfuns(xcoord, eigvals, eigfuns, out_name, k=10):
+def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10):
     assert eigvals.size == eigfuns.shape[1]
     if k is None:
         k = eigvals.size
@@ -50,22 +60,8 @@ def plot_eigfuns(xcoord, eigvals, eigfuns, out_name, k=10):
         if np.allclose(eigvals[idx], prev_eig) or np.allclose(np.conj(eigvals[idx]), prev_eig):
             continue
         
-        ax = axes[0]
-        ax.clear()
-        ax.plot(xcoord, np.imag(eigfuns[0::2, idx]), 'r-', label="Im")
-        ax.plot(xcoord, np.real(eigfuns[0::2, idx]), 'k-', label="Re")
-        ax.legend()
-        ax.set_xlabel("s")
-        ax.set_title("u")
-
-        ax = axes[1]
-        ax.clear()
-        ax.plot(xcoord, np.imag(eigfuns[1::2, idx]), 'r-', label="Im")
-        ax.plot(xcoord, np.real(eigfuns[1::2, idx]), 'b-', label="Re")
-        ax.legend()
-        ax.set_xlabel("s")
-        ax.set_title("b")
-        
+        plot_solution(xcoord, eigfuns[0::2, idx], yvar='u', ax=axes[0])
+        plot_solution(xcoord, eigfuns[1::2, idx], yvar='b', ax=axes[1])        
         fig.suptitle(r"$\tilde{\omega}=$" + "{:.4f}".format(eigvals[idx]))
         plt.savefig(out_name_list[i_plt], format='png', dpi=128)
         
@@ -73,12 +69,39 @@ def plot_eigfuns(xcoord, eigvals, eigfuns, out_name, k=10):
         i_plt += 1
     
     plt.close(fig)
+
+def multimode_stepping(xcoord, eigvals, eigfuns, weights, t_max, out_name, dt=0.1):
+    assert eigvals.size == eigfuns.shape[1]
+    normalizer = np.max(eigfuns, axis=0)
+    eigfuns = eigfuns/normalizer
+    t_array = np.arange(0, t_max, dt)
+    out_name_list = [out_name + "{:02d}.png".format(i) for i in range(t_array.size)]
+    
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
+    for i_plt, t in enumerate(t_array):
+        
+        mixed_model = np.sum(weights*np.exp(eigvals*t)*eigfuns, axis=1)
+        plot_solution(xcoord, mixed_model[0::2], yvar='u', ax=axes[0])
+        axes[0].set_ylim([-15, 15])
+        plot_solution(xcoord, mixed_model[1::2], yvar='b', ax=axes[1])
+        axes[1].set_ylim([-0.02, 0.02])
+        fig.suptitle("t={:.2f}".format(t))
+        plt.savefig(out_name_list[i_plt], format="png", dpi=128)
     
 
 if __name__ == "__main__":
-    in_name = "./output/eigenmodes_n50_v2.h5"
+    
+    in_name = "./output/eigenmodes_Pm0.h5"
+    
     xcoord, eigvals, eigfuns = read_eig(in_name)
     eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)
-    out_dir = "./output/eigenmodes_n50_v2/"
+    
+    out_dir = "./output/eigenmodes_Pm0/"
     Path(out_dir).mkdir(parents=True, exist_ok=False)
-    plot_eigfuns(xcoord, eigvals, eigfuns, out_dir + "eigenfunc", k=50)
+    plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_dir + "eigenfunc", k=50)
+
+    # out_dir = "./output/eigenmodes_n50_snap/"
+    # Path(out_dir).mkdir(parents=True, exist_ok=False)    
+    # multimode_stepping(xcoord, eigvals[:20], eigfuns[:, :20], weights=np.ones(20), t_max=5, 
+    #                    out_name=out_dir + "snap", dt=0.1)
+    
