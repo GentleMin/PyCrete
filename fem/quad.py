@@ -7,6 +7,7 @@ Jingtao Min @ ETH Zurich, 2022
 
 
 import numpy as np
+from scipy import special
 
 
 quad_1d = {
@@ -34,3 +35,6 @@ quad_2d = {
                        [-1, +1, +1, -1, 0, +1, 0, -1, 0]])*np.sqrt(3/5), 
              np.array([25, 25, 25, 25, 40, 40, 40, 40, 64])/81]
 }
+
+def gaussian_quad(npt):
+    return special.roots_legendre(npt)

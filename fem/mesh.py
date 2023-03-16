@@ -14,7 +14,7 @@ class FiniteElement:
     """
     def __init__(self) -> None:
         self.n_nodes = None
-        self.order = None
+        self.degree = None
     
     def f_shape(self, *args):
         """Evaluate shape functions
@@ -45,7 +45,7 @@ class LinearElement(FiniteElement):
     def __init__(self) -> None:
         super().__init__()
         self.n_nodes = 2
-        self.order = 2
+        self.degree = 1
     
     def f_shape(self, xi):
         N_1 = (1 - np.atleast_1d(xi))/2
@@ -69,7 +69,7 @@ class QuadraticElement(FiniteElement):
     def __init__(self) -> None:
         super().__init__()
         self.n_nodes = 3
-        self.order = 3
+        self.degree = 2
     
     def f_shape(self, xi):
         xi = np.atleast_1d(xi)
@@ -84,6 +84,37 @@ class QuadraticElement(FiniteElement):
         dN_2 = -2*xi
         dN_3 = xi + 1/2
         return np.stack([dN_1, dN_2, dN_3], axis=0)
+
+
+class CubicElement(FiniteElement):
+    """1-D cubic element with 4 nodes
+    
+    Shape indexing / node correspondence:
+    0: xi = -1
+    1: xi = -1/3
+    2: xi = +1/3
+    3: xi = +1
+    """
+    def __init__(self) -> None:
+        super().__init__()
+        self.n_nodes = 4
+        self.degree = 3
+    
+    def f_shape(self, xi):
+        xi = np.atleast_1d(xi)
+        N_1 = -(((9*xi - 9)*xi - 1)*xi + 1)/16
+        N_2 = +9/16*(((3*xi - 1)*xi - 3)*xi + 1)
+        N_3 = -9/16*(((3*xi + 1)*xi - 3)*xi - 1)
+        N_4 = +(((9*xi + 9)*xi - 1)*xi - 1)/16
+        return np.stack([N_1, N_2, N_3, N_4], axis=0)
+    
+    def f_dshape(self, xi):
+        xi = np.atleast_1d(xi)
+        dN_1 = -((27*xi - 18)*xi - 1)/16
+        dN_2 = +9/16*((9*xi - 2)*xi - 3)
+        dN_3 = -9/16*((9*xi + 2)*xi - 3)
+        dN_4 = +((27*xi + 18)*xi - 1)/16
+        return np.stack([dN_1, dN_2, dN_3, dN_4], axis=0)
 
 
 class BiLinearElement(FiniteElement):
@@ -106,7 +137,7 @@ class BiLinearElement(FiniteElement):
         super().__init__()
         self.element_1d = LinearElement()
         self.n_nodes = 4
-        self.order = 2
+        self.degree = 1
     
     def f_shape(self, xi):
         N_dim1 = self.element_1d.f_shape(xi[0])
@@ -162,7 +193,7 @@ class BiQuadraticElement(FiniteElement):
         super().__init__()
         self.element_1d = QuadraticElement()
         self.n_nodes = 9
-        self.order = 3
+        self.degree = 2
     
     def f_shape(self, xi):
         N_dim1 = self.element_1d.f_shape(xi[0])
@@ -191,3 +222,5 @@ class BiQuadraticElement(FiniteElement):
                          [dN_dim1[2]*N_dim2[1], N_dim1[2]*dN_dim2[1]], 
                          [dN_dim1[1]*N_dim2[0], N_dim1[1]*dN_dim2[0]], 
                          [dN_dim1[1]*N_dim2[1], N_dim1[1]*dN_dim2[1]]])
+
+
