@@ -1,4 +1,4 @@
 
 # Ignore ipython notebooks
-.ipynb linguist-generated
+*.ipynb linguist-generated
 
