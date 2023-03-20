@@ -6,14 +6,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from pathlib import Path
+from spectral import basis
 
 
-def read_eig(in_name):
+def read_eig_fem(in_name):
     with h5py.File(in_name, 'r') as f:
         xcoord = f["nodes"][()]
         eigvals = f["eigenvals"][()]
         eigfuns = f["eigenfuns"][()]
     return xcoord, eigvals, eigfuns
+
+def read_eig_spectrum(in_name):
+    with h5py.File(in_name, 'r') as f:
+        degrees = f["degrees"][()]
+        eigvals = f["eigenvals"][()]
+        eigfuns = f["eigenfuns"][()]
+    return degrees, eigvals, eigfuns
+
+def assemble_spectral_funcs(degrees, xcoord, coeffs):
+    cheby_eval = basis.ChebyshevTSpace(degrees, xcoord)
+    eigenmodes = np.zeros((2*xcoord.size, coeffs.shape[1]), dtype=np.complex128)
+    eigenmodes[::2, :] = np.array([cheby_eval(coeffs[:degrees.size, i]) for i in range(coeffs.shape[1])]).T
+    eigenmodes[1::2, :] = np.array([cheby_eval(coeffs[degrees.size:, i]) for i in range(coeffs.shape[1])]).T
+    return eigenmodes
 
 def filter_sort_eig(eigvals, eigfuns):
     # Filter the slow-decaying modes (these are usually the non-spurious ones)
@@ -38,7 +53,7 @@ def plot_solution(xcoord, eigfun, yvar=None, ax=None):
         ax.set_title(yvar)
     return ax
 
-def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10):
+def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10, normalized=False):
     assert eigvals.size == eigfuns.shape[1]
     if k is None:
         k = eigvals.size
@@ -48,6 +63,9 @@ def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10):
         out_name_list = out_name
     else:
         out_name_list = [out_name + "{:02d}.png".format(i) for i in range(k)]
+    
+    if normalized:
+        eigfuns = eigfuns/np.max(eigfuns, axis=0)
     
     prev_eig = 0. + 1j*0.
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
@@ -87,21 +105,37 @@ def multimode_stepping(xcoord, eigvals, eigfuns, weights, t_max, out_name, dt=0.
         axes[1].set_ylim([-0.02, 0.02])
         fig.suptitle("t={:.2f}".format(t))
         plt.savefig(out_name_list[i_plt], format="png", dpi=128)
-    
 
-if __name__ == "__main__":
+
+def routine_plot_eigenmodes_fem(in_name, out_dir):
     
-    in_name = "./output/eigenmodes_Pm0.h5"
-    
-    xcoord, eigvals, eigfuns = read_eig(in_name)
-    eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)
-    
-    out_dir = "./output/eigenmodes_Pm0/"
+    xcoord, eigvals, eigfuns = read_eig_fem(in_name)
+    eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)    
     Path(out_dir).mkdir(parents=True, exist_ok=False)
     plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_dir + "eigenfunc", k=50)
 
-    # out_dir = "./output/eigenmodes_n50_snap/"
-    # Path(out_dir).mkdir(parents=True, exist_ok=False)    
-    # multimode_stepping(xcoord, eigvals[:20], eigfuns[:, :20], weights=np.ones(20), t_max=5, 
-    #                    out_name=out_dir + "snap", dt=0.1)
+def routine_multimode_stepping_fem(in_name, out_dir):
+    
+    xcoord, eigvals, eigfuns = read_eig_fem(in_name)
+    eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)
+    Path(out_dir).mkdir(parents=True, exist_ok=False)    
+    multimode_stepping(xcoord, eigvals[:20], eigfuns[:, :20], weights=np.ones(20), t_max=5, 
+                       out_name=out_dir + "snap", dt=0.1)
+    
+def routine_plot_eigenmodes_spectral(in_name, out_dir):
+    
+    degrees, eigvals, eigfuns = read_eig_spectrum(in_name)
+    xi_array = np.linspace(-1, 1, num=100)
+    s_array = (1 + xi_array)/2
+    eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)    
+    eigenmodes = assemble_spectral_funcs(degrees, xi_array, eigfuns)
+    Path(out_dir).mkdir(parents=True, exist_ok=False)
+    plot_batch_eigmodes(s_array, eigvals, eigenmodes, out_dir + "eigenfunc", k=50)
+
+
+if __name__ == "__main__":
+    
+    routine_plot_eigenmodes_spectral(in_name="./output/eigenmodes_Pm0_cheby50.h5", 
+                                     out_dir="./output/eigenmodes_Pm0_cheby50/")
+
     
