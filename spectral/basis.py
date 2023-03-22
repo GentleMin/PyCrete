@@ -22,7 +22,23 @@ class ChebyshevTSpace:
         self.basis = specfun.eval_chebyt(N_mesh, Xi_mesh)
     
     def __call__(self, coeffs: np.ndarray) -> np.ndarray:
-        assert coeffs.size == self.basis.shape[1]
-        return np.sum(coeffs*self.basis, axis=-1)
+        if coeffs.ndim == 1:
+            assert coeffs.size == self.degrees.size
+            return np.sum(coeffs*self.basis, axis=-1)
+        elif coeffs.ndim == 2:
+            assert coeffs.shape[1] == self.degrees.size
+            return np.array([np.sum(coeffs[i]*self.basis, axis=-1) for i in range(self.degrees.size)])
     
-    
+    def kernel(self, integrand, int_degree=0, jacobi_idx=(-1/2, -1/2), transform=lambda x: x, jac=lambda x: np.ones(x.shape)):
+        
+        n_degree = 2*int(self.degrees.max()) + int_degree
+        n_quad = n_degree//2 + 1
+        xi_quad, wt_quad = specfun.roots_jacobi(n_quad, jacobi_idx[0], jacobi_idx[1])
+        
+        N_mesh, Xi_mesh = np.meshgrid(self.degrees, xi_quad, indexing='ij')
+        basis_quad = specfun.eval_chebyt(N_mesh, Xi_mesh)
+        int_wts = wt_quad*integrand(transform(xi_quad))*jac(xi_quad)
+        kernel_matrix = np.sum(int_wts*(basis_quad[:, np.newaxis, :]*basis_quad[np.newaxis, :, :]), axis=-1)
+        
+        return kernel_matrix
+
