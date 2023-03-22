@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 
 
 save_eigen = True
-save_eigen_fname = "./output/eigenmodes_Pm0_cheby50"
-save_pattern_fname = "./output/specspy_TO_Pm0_cheby50"
+save_eigen_fname = "./output/eigenmodes_Pm0_cheby1000"
+save_pattern_fname = "./output/specspy_TO_Pm0_cheby1000"
+# save_pattern_fname = None
 # Scipy.sparse.eigs seem to require both matrices nonsingular in generalized eigenproblem
 sparse_solver = False
 
@@ -27,9 +28,9 @@ import config_TO as cfg
 """Spectral setup"""
 
 # Truncation degree
-N_trunc = 50
+N_trunc = 1000
 # Quadrature
-n_quad = 53
+n_quad = N_trunc + 4
 xi_quad, wt_quad = special.roots_chebyt(n_quad)
 s_quad = (1 + xi_quad)/2
 jac = Ls/2
@@ -72,6 +73,8 @@ Kbb1 = np.sum(jac*wt_quad*Kbb1, axis=-1)
 Kbb0 = cfg.k_bb0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
 Kbb0 = np.sum(jac*wt_quad*Kbb0, axis=-1)
 
+print("Matrices calculated")
+
 K_mat = np.zeros((2*N_trunc, 2*N_trunc))
 K_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Kuu2 + Kuu1
 K_mat[np.ix_(np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kub1 + Kub0
@@ -86,6 +89,8 @@ Mb = np.sum(jac*wt_quad*Mb, axis=-1)
 M_mat = np.zeros((2*N_trunc, 2*N_trunc))
 M_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Mu
 M_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Mb
+
+print("Matrices assembled")
 
 
 """Apply Boundary condition"""
@@ -111,6 +116,8 @@ if sparse_solver:
 else:
     w, v = linalg.eig(K_mat, M_mat)
 
+print("Eigensystem solved")
+
 
 """Output"""
 
@@ -133,6 +140,6 @@ ax.spy(M_mat, precision=1e-12)
 # cm = ax.matshow(M_mat)
 # plt.colorbar(cm, ax=ax)
 if save_pattern_fname is not None:
-    plt.savefig(save_pattern_fname, format='png', dpi=150, bbox_inches="tight")
+    plt.savefig(save_pattern_fname + '.png', format='png', dpi=150, bbox_inches="tight")
 plt.show()
 

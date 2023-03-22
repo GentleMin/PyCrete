@@ -13,8 +13,8 @@ import h5py
 """IO Setting"""
 
 save_eigen = True
-save_eigen_fname = "./output/eigenmodes_Pm0_n100"
-save_pattern_fname = "./output/specspy_TO_Pm0_fem"
+save_eigen_fname = "./output/eigenmodes_Pm0_n500"
+save_pattern_fname = "./output/specspy_TO_Pm0_fem500"
 
 sparse_solver = True
 
@@ -29,7 +29,7 @@ import config_TO as cfg
 """Mesh generation"""
 
 # Maximum element size
-ds_max = 0.01
+ds_max = 0.001
 # Collocation: the meshes are of the same type and overlap
 elem = mesh.QuadraticElement()
 # Quadrature rules
@@ -173,6 +173,7 @@ for i_elem in range(n_elem):
 # Assemble sparse matrices
 M_mat = sparse.coo_array((M_vals, (M_rows, M_cols)), shape=(n_dof, n_dof)).tocsr()
 K_mat = sparse.coo_array((K_vals, (K_rows, K_cols)), shape=(n_dof, n_dof)).tocsr()
+print("Matrices assembled")
 
 
 """Applying homogeneous Dirichlet boundary conditions"""
@@ -186,9 +187,9 @@ K_mat = K_mat[np.ix_(idx_rem, idx_rem)]
 
 """Solving the eigenvalue problem"""
 if sparse_solver:
-    w, v = splinalg.eigs(sparse.csc_array(K_mat), k=70, M=sparse.csc_array(M_mat), which="LR", return_eigenvectors=True, tol=1e-3, maxiter=1000)
+    w, v = splinalg.eigs(sparse.csc_array(K_mat), k=70, M=sparse.csc_array(M_mat), which="LR", return_eigenvectors=True, tol=1e-10, maxiter=10000)
 else:
-    w, v = linalg.eig(K_mat, M_mat)
+    w, v = linalg.eig(K_mat.todense(), M_mat.todense())
 
 
 """Outputs"""
