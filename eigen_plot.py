@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import h5py
 from pathlib import Path
 from spectral import basis
+from post_processing import plottings
 
 
 def read_eig_fem(in_name):
@@ -26,8 +27,8 @@ def read_eig_spectrum(in_name):
 def assemble_spectral_funcs(degrees, xcoord, coeffs):
     cheby_eval = basis.ChebyshevTSpace(degrees, xcoord)
     eigenmodes = np.zeros((2*xcoord.size, coeffs.shape[1]), dtype=np.complex128)
-    eigenmodes[::2, :] = np.array([cheby_eval(coeffs[:degrees.size, i]) for i in range(coeffs.shape[1])]).T
-    eigenmodes[1::2, :] = np.array([cheby_eval(coeffs[degrees.size:, i]) for i in range(coeffs.shape[1])]).T
+    eigenmodes[::2, :] = cheby_eval(coeffs[:degrees.size].T).T
+    eigenmodes[1::2, :] = cheby_eval(coeffs[degrees.size:].T).T
     return eigenmodes
 
 def filter_sort_eig(eigvals, eigfuns):
@@ -40,18 +41,6 @@ def filter_sort_eig(eigvals, eigfuns):
     eigvals = eigvals[idx_sorted]
     eigfuns = eigfuns[:, idx_sorted]
     return eigvals, eigfuns
-
-def plot_solution(xcoord, eigfun, yvar=None, ax=None):
-    if ax is None:
-        _, ax = plt.subplots(nrows=1, ncols=1)
-    ax.clear()
-    ax.plot(xcoord, np.imag(eigfun), 'r-', label="Im")
-    ax.plot(xcoord, np.real(eigfun), 'b-', label="Re")
-    ax.legend()
-    ax.set_xlabel('s')
-    if yvar is not None:
-        ax.set_title(yvar)
-    return ax
 
 def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10, normalized=False):
     assert eigvals.size == eigfuns.shape[1]
@@ -78,8 +67,8 @@ def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10, normalized=Fal
         if np.allclose(eigvals[idx], prev_eig) or np.allclose(np.conj(eigvals[idx]), prev_eig):
             continue
         
-        plot_solution(xcoord, eigfuns[0::2, idx], yvar='u', ax=axes[0])
-        plot_solution(xcoord, eigfuns[1::2, idx], yvar='b', ax=axes[1])        
+        plottings.plot_function_1D(xcoord, eigfuns[0::2, idx], yvar='u', ax=axes[0])
+        plottings.plot_function_1D(xcoord, eigfuns[1::2, idx], yvar='b', ax=axes[1])        
         fig.suptitle(r"$\tilde{\omega}=$" + "{:.4f}".format(eigvals[idx]))
         plt.savefig(out_name_list[i_plt], format='png', dpi=128)
         
@@ -99,9 +88,9 @@ def multimode_stepping(xcoord, eigvals, eigfuns, weights, t_max, out_name, dt=0.
     for i_plt, t in enumerate(t_array):
         
         mixed_model = np.sum(weights*np.exp(eigvals*t)*eigfuns, axis=1)
-        plot_solution(xcoord, mixed_model[0::2], yvar='u', ax=axes[0])
+        plottings.plot_function_1D(xcoord, mixed_model[0::2], yvar='u', ax=axes[0])
         axes[0].set_ylim([-15, 15])
-        plot_solution(xcoord, mixed_model[1::2], yvar='b', ax=axes[1])
+        plottings.plot_function_1D(xcoord, mixed_model[1::2], yvar='b', ax=axes[1])
         axes[1].set_ylim([-0.02, 0.02])
         fig.suptitle("t={:.2f}".format(t))
         plt.savefig(out_name_list[i_plt], format="png", dpi=128)
