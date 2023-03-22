@@ -9,3 +9,6 @@ __pycache__/
 
 # Large test data files (historical)
 output/
+
+# Test file
+test.py
