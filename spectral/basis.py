@@ -27,7 +27,7 @@ class ChebyshevTSpace:
             return np.sum(coeffs*self.basis, axis=-1)
         elif coeffs.ndim == 2:
             assert coeffs.shape[1] == self.degrees.size
-            return np.array([np.sum(coeffs[i]*self.basis, axis=-1) for i in range(self.degrees.size)])
+            return np.array([np.sum(coeffs[i]*self.basis, axis=-1) for i in range(coeffs.shape[0])])
     
     def kernel(self, integrand, int_degree=0, jacobi_idx=(-1/2, -1/2), transform=lambda x: x, jac=lambda x: np.ones(x.shape)):
         
