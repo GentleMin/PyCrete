@@ -13,10 +13,11 @@ import h5py
 """IO Setting"""
 
 save_eigen = True
-save_eigen_fname = "./output/eigenmodes_Pm0_n500"
-save_pattern_fname = "./output/specspy_TO_Pm0_fem500"
+save_eigen_fname = "./output/eigenmodes_Pm0_n500_full"
+save_pattern_fname = None
+# save_pattern_fname = "./output/specspy_TO_Pm0_fem500"
 
-sparse_solver = True
+sparse_solver = False
 
 
 """Physics setup"""
@@ -29,7 +30,7 @@ import config_TO as cfg
 """Mesh generation"""
 
 # Maximum element size
-ds_max = 0.001
+ds_max = 0.002
 # Collocation: the meshes are of the same type and overlap
 elem = mesh.QuadraticElement()
 # Quadrature rules
@@ -187,7 +188,7 @@ K_mat = K_mat[np.ix_(idx_rem, idx_rem)]
 
 """Solving the eigenvalue problem"""
 if sparse_solver:
-    w, v = splinalg.eigs(sparse.csc_array(K_mat), k=70, M=sparse.csc_array(M_mat), which="LR", return_eigenvectors=True, tol=1e-10, maxiter=10000)
+    w, v = splinalg.eigs(sparse.csc_array(K_mat), k=100, M=sparse.csc_array(M_mat), which="LR", return_eigenvectors=True, tol=1e-12, maxiter=10000)
 else:
     w, v = linalg.eig(K_mat.todense(), M_mat.todense())
 
