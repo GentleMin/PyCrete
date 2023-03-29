@@ -5,6 +5,7 @@ Plotting the 1D eigen function solutions
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
+from scipy import special as specfun
 from pathlib import Path
 from spectral import basis
 from post_processing import plottings
@@ -42,7 +43,7 @@ def filter_sort_eig(eigvals, eigfuns):
     eigfuns = eigfuns[:, idx_sorted]
     return eigvals, eigfuns
 
-def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10, normalized=False):
+def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10, normalized=False, verbose_batch=100):
     assert eigvals.size == eigfuns.shape[1]
     if k is None:
         k = eigvals.size
@@ -71,6 +72,9 @@ def plot_batch_eigmodes(xcoord, eigvals, eigfuns, out_name, k=10, normalized=Fal
         plottings.plot_function_1D(xcoord, eigfuns[1::2, idx], yvar='b', ax=axes[1])        
         fig.suptitle(r"$\tilde{\omega}=$" + "{:.4f}".format(eigvals[idx]))
         plt.savefig(out_name_list[i_plt], format='png', dpi=128)
+        
+        if (idx + 1) % verbose_batch == 0:
+            print("{:d} modes generated.".format(idx + 1))
         
         prev_eig = eigvals[idx]
         i_plt += 1
@@ -111,20 +115,26 @@ def routine_multimode_stepping_fem(in_name, out_dir):
     multimode_stepping(xcoord, eigvals[:20], eigfuns[:, :20], weights=np.ones(20), t_max=5, 
                        out_name=out_dir + "snap", dt=0.1)
     
-def routine_plot_eigenmodes_spectral(in_name, out_dir):
+def routine_plot_eigenmodes_spectral(in_name, out_dir, uniform_grid=True, n_grid=100, k=50):
     
     degrees, eigvals, eigfuns = read_eig_spectrum(in_name)
-    xi_array = np.linspace(-1, 1, num=100)
+    if uniform_grid:
+        xi_array = np.linspace(-1, 1, num=n_grid)
+    else:
+        xi_array, _ = specfun.roots_chebyt(n_grid)
     s_array = (1 + xi_array)/2
-    eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)    
+    eigvals, eigfuns = filter_sort_eig(eigvals, eigfuns)
+    # eigvals = eigvals[:k]
+    # eigfuns = eigfuns[:, :k]
     eigenmodes = assemble_spectral_funcs(degrees, xi_array, eigfuns)
     Path(out_dir).mkdir(parents=True, exist_ok=False)
-    plot_batch_eigmodes(s_array, eigvals, eigenmodes, out_dir + "eigenfunc", k=50)
+    plot_batch_eigmodes(s_array, eigvals, eigenmodes, out_dir + "eigenfunc", k=k)
 
 
 if __name__ == "__main__":
     
-    routine_plot_eigenmodes_spectral(in_name="./output/eigenmodes_Pm0_cheby50.h5", 
-                                     out_dir="./output/eigenmodes_Pm0_cheby50/")
+    routine_plot_eigenmodes_spectral(in_name="./output/eigenmodes_Pm0_cheby1000.h5", 
+                                     out_dir="./output/eigenmodes_Pm0_cheby1000_quadpt/",
+                                     uniform_grid=False, n_grid=200)
 
     
