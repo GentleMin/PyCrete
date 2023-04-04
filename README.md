@@ -1,4 +1,4 @@
-# PyCrete: a Discrete Numerical PDE Solvers in Python
+# PyCrete: Discrete Numerical PDE Solvers in Python
 
 Under development...
 
