@@ -138,13 +138,14 @@ class EigenSolveNet1D(EigenNet1D):
     :param scan_floor: float, shift constant in driver term
     """
     
-    def __init__(self, x_range=torch.tensor([[-1, 1]]), n_int=100, bc_weight=1., mag_weight=1., drive_weight=1., scan_floor=0., scan_sign=+1) -> None:
+    def __init__(self, x_range=torch.tensor([[-1, 1]]), n_int=100, bc_weight=1., mag_weight=1., drive_weight=1., scan_floor=0., scan_sign=+1, scan_scale=1.) -> None:
         
         super().__init__(x_range=x_range, n_int=n_int, bc_weight=bc_weight)
         self.mag_weight = mag_weight
         self.drive_weight = drive_weight
         self.scan_floor = torch.Tensor([scan_floor, ])
         self.scan_sign = scan_sign
+        self.scan_scale = scan_scale
         self.eigenvalue = torch.Tensor([scan_floor, ])
         self.eigenvalue.requires_grad = True
         self.sobol_engine = torch.quasirandom.SobolEngine(dimension=self.x_range.shape[0])
@@ -183,7 +184,7 @@ class EigenSolveNet1D(EigenNet1D):
     def driver_loss(self):
         """Driver loss
         """
-        penalty = torch.exp(self.scan_sign*(self.scan_floor - self.eigenvalue)).squeeze()
+        penalty = torch.exp(self.scan_sign*(self.scan_floor - self.eigenvalue)/self.scan_scale).squeeze()
         return penalty
     
     def compute_loss(self):
