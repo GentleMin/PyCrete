@@ -5,17 +5,22 @@ Spectral method implementation
 
 
 import numpy as np
+import time
 from scipy import linalg, sparse, special
 from scipy.sparse import linalg as splinalg
 import matplotlib.pyplot as plt
 
 
 save_eigen = True
-save_eigen_fname = "./output/eigenmodes_Pm0_cheby1000"
-save_pattern_fname = "./output/specspy_TO_Pm0_cheby1000"
-# save_pattern_fname = None
+save_eigen_fname = "./output/eigenmodes_Pm0_cheby1000_v2"
+# save_pattern_fname = "./output/specspy_TO_Pm0_cheby1000"
+save_pattern_fname = None
+
 # Scipy.sparse.eigs seem to require both matrices nonsingular in generalized eigenproblem
 sparse_solver = False
+
+# whether to use memory-efficient, but not fully scipy-vectorized version
+save_memory = True
 
 
 """Physics setup"""
@@ -46,49 +51,82 @@ dTn_dxi2 = N_mesh*dTn_dxi2/(Xi_mesh**2 - 1)
 dTn_ds = dTn_dxi/jac
 dTn_ds2 = dTn_dxi2/jac/jac
 
+start_time = time.time()
+
 
 """Assemble matrices"""
 
-Kuu2 = cfg.k_uu2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
-Kuu2 = np.sum(jac*wt_quad*Kuu2, axis=-1)
+if save_memory:
+    # Memory-efficient (?) sequential calculation
 
-Kuu1 = cfg.k_uu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-Kuu1 = np.sum(jac*wt_quad*Kuu1, axis=-1)
+    Kuu = np.zeros((N_trunc, N_trunc))
+    Kub = np.zeros((N_trunc, N_trunc))
+    Kbu = np.zeros((N_trunc, N_trunc))
+    Kbb = np.zeros((N_trunc, N_trunc))
+    Mu = np.zeros((N_trunc, N_trunc))
+    Mb = np.zeros((N_trunc, N_trunc))
 
-Kub1 = cfg.k_ub1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-Kub1 = np.sum(jac*wt_quad*Kub1, axis=-1)
+    for i in range(N_trunc):
+        for j in range(N_trunc):
+            
+            kuu_quad = Tn[i, :]*(cfg.k_uu2(s_quad)*dTn_ds2[j, :] + cfg.k_uu1(s_quad)*dTn_ds[j, :])
+            Kuu[i, j] = np.sum(jac*wt_quad*kuu_quad)
+            kub_quad = Tn[i, :]*(0*cfg.k_ub1(s_quad)*dTn_ds[j, :] + cfg.k_ub0(s_quad)*Tn[j, :])
+            Kub[i, j] = np.sum(jac*wt_quad*kub_quad)
+            kbu_quad = Tn[i, :]*(cfg.k_bu1(s_quad)*dTn_ds[j, :])
+            Kbu[i, j] = np.sum(jac*wt_quad*kbu_quad)
+            kbb_quad = Tn[i, :]*(cfg.k_bb2(s_quad)*dTn_ds2[j, :] + cfg.k_bb1(s_quad)*dTn_ds[j, :] + cfg.k_bb0(s_quad)*Tn[j, :])
+            Kbb[i, j] = np.sum(jac*wt_quad*kbb_quad)
+            
+            Mu[i, j] = np.sum(jac*wt_quad*Tn[i, :]*cfg.m_u(s_quad)*Tn[j, :])
+            Mb[i, j] = np.sum(jac*wt_quad*Tn[i, :]*cfg.m_b(s_quad)*Tn[j, :])
 
-Kub0 = cfg.k_ub0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-Kub0 = np.sum(jac*wt_quad*Kub0, axis=-1)
+else:
+    Kuu2 = cfg.k_uu2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
+    Kuu2 = np.sum(jac*wt_quad*Kuu2, axis=-1)
 
-Kbu1 = cfg.k_bu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-Kbu1 = np.sum(jac*wt_quad*Kbu1, axis=-1)
+    Kuu1 = cfg.k_uu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    Kuu1 = np.sum(jac*wt_quad*Kuu1, axis=-1)
 
-Kbb2 = cfg.k_bb2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
-Kbb2 = np.sum(jac*wt_quad*Kbb2, axis=-1)
+    Kub1 = cfg.k_ub1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    Kub1 = np.sum(jac*wt_quad*Kub1, axis=-1)
 
-Kbb1 = cfg.k_bb1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-Kbb1 = np.sum(jac*wt_quad*Kbb1, axis=-1)
+    Kub0 = cfg.k_ub0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    Kub0 = np.sum(jac*wt_quad*Kub0, axis=-1)
 
-Kbb0 = cfg.k_bb0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-Kbb0 = np.sum(jac*wt_quad*Kbb0, axis=-1)
+    Kbu1 = cfg.k_bu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    Kbu1 = np.sum(jac*wt_quad*Kbu1, axis=-1)
+
+    Kbb2 = cfg.k_bb2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
+    Kbb2 = np.sum(jac*wt_quad*Kbb2, axis=-1)
+
+    Kbb1 = cfg.k_bb1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    Kbb1 = np.sum(jac*wt_quad*Kbb1, axis=-1)
+
+    Kbb0 = cfg.k_bb0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    Kbb0 = np.sum(jac*wt_quad*Kbb0, axis=-1)
+
+    Mu = cfg.m_u(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    Mu = np.sum(jac*wt_quad*Mu, axis=-1)
+    Mb = cfg.m_b(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    Mb = np.sum(jac*wt_quad*Mb, axis=-1)
 
 print("Matrices calculated")
 
-K_mat = np.zeros((2*N_trunc, 2*N_trunc))
-K_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Kuu2 + Kuu1
-K_mat[np.ix_(np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kub1 + Kub0
-K_mat[np.ix_(N_trunc + np.arange(N_trunc), np.arange(N_trunc))] = Kbu1
-K_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kbb2 + Kbb1 + Kbb0
+if save_memory:
+    K_mat = np.block([[Kuu, Kub], [Kbu, Kbb]])
+    M_mat = np.block([[Mu, np.zeros((N_trunc, N_trunc))], [np.zeros((N_trunc, N_trunc)), Mb]])
+else:
+    K_mat = np.zeros((2*N_trunc, 2*N_trunc))
+    K_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Kuu2 + Kuu1
+    K_mat[np.ix_(np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kub1 + Kub0
+    K_mat[np.ix_(N_trunc + np.arange(N_trunc), np.arange(N_trunc))] = Kbu1
+    K_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kbb2 + Kbb1 + Kbb0
 
-Mu = cfg.m_u(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-Mu = np.sum(jac*wt_quad*Mu, axis=-1)
-Mb = cfg.m_b(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-Mb = np.sum(jac*wt_quad*Mb, axis=-1)
+    M_mat = np.zeros((2*N_trunc, 2*N_trunc))
+    M_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Mu
+    M_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Mb
 
-M_mat = np.zeros((2*N_trunc, 2*N_trunc))
-M_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Mu
-M_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Mb
 
 print("Matrices assembled")
 
@@ -118,10 +156,16 @@ else:
 
 print("Eigensystem solved")
 
+end_time = time.time()
+print("Time = {:.2f} s".format(end_time - start_time))
+
 
 """Output"""
 
 import h5py
+
+# np.save("./output/K_mat_vectorized.npy", arr=K_mat)
+# np.save("./output/M_mat_vectorized.npy", arr=M_mat)
 
 if save_eigen:
     with h5py.File(save_eigen_fname + ".h5", 'x') as f_write:

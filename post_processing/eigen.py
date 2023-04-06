@@ -50,8 +50,10 @@ class EigenTracker:
         return min_idx, eigen_candidate
 
 
-def track_eigenvalues(f_eigen_list, k=20):
+def track_eigenvalues(f_eigen_list, k=20, reverse_track=False):
     assert len(f_eigen_list) >= 1
+    if reverse_track:
+        f_eigen_list = list(reversed(f_eigen_list))
     with h5py.File(f_eigen_list[0], 'r') as f:
         eigen_vals = f["eigenvals"][()]
         eigen_funs = f["eigenfuns"][()]
@@ -66,6 +68,9 @@ def track_eigenvalues(f_eigen_list, k=20):
         track_temp = [tracker.track_next(eigen_vals) for tracker in trackers]
         tracked_val[:, i_file] = np.array([it[1] for it in track_temp])
         tracked_idx[:, i_file] = np.array([it[0] for it in track_temp], dtype=np.int32)
+    if reverse_track:
+        tracked_val = np.flip(tracked_val, axis=1)
+        tracked_idx = np.flip(tracked_idx, axis=1)
     return tracked_idx, tracked_val
         
         
