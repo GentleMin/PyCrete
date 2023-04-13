@@ -133,8 +133,11 @@ def routine_plot_eigenmodes_spectral(in_name, out_dir, uniform_grid=True, n_grid
 
 if __name__ == "__main__":
     
-    routine_plot_eigenmodes_spectral(in_name="./output/eigenmodes_Pm0_cheby1000.h5", 
-                                     out_dir="./output/eigenmodes_Pm0_cheby1000_quadpt/",
-                                     uniform_grid=False, n_grid=200)
+    # routine_plot_eigenmodes_spectral(in_name="./output/eigenmodes_1D/eigenmodes_Pm1e+1_noslip_cheby500_redvec.h5", 
+    #                                  out_dir="./output/eigenmodes_1D/eigenmodes_Pm1e+1_noslip/cheby500/",
+    #                                  uniform_grid=False, n_grid=200)
+    
+    routine_plot_eigenmodes_fem(in_name="./output/eigenmodes_1D/eigenmodes_Pm0_freeslip/eigenmodes_Pm0_n100_full.h5",
+                                out_dir="./output/eigenmodes_1D/eigenmodes_Pm0_freeslip/fem100/")
 
     

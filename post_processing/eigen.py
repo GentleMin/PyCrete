@@ -10,16 +10,20 @@ import h5py
 import warnings
 
 
-def filter_sort_eig(eigvals, eigfuns):
+def filter_sort_eig(eigvals, eigfuns=None, threshold=0.5):
     # Filter the slow-decaying modes (these are usually the non-spurious ones)
-    idx_filtered = np.abs(np.imag(eigvals)) > 0.5*np.abs(np.real(eigvals))
+    idx_filtered = np.abs(np.imag(eigvals)) > threshold*np.abs(np.real(eigvals))
     eigvals = eigvals[idx_filtered]
-    eigfuns = eigfuns[:, idx_filtered]
+    if eigfuns is not None:
+        eigfuns = eigfuns[:, idx_filtered]
     # Sort by real part, and then by imaginary part
     idx_sorted = sorted(list(range(eigvals.size)), key=lambda i: (-np.real(eigvals[i]), np.abs(np.imag(eigvals[i]))))
     eigvals = eigvals[idx_sorted]
-    eigfuns = eigfuns[:, idx_sorted]
-    return eigvals, eigfuns
+    if eigfuns is not None:
+        eigfuns = eigfuns[:, idx_sorted]
+        return eigvals, eigfuns
+    else:
+        return eigvals
 
 
 class EigenTracker:

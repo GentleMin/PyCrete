@@ -6,7 +6,7 @@ import numpy as np
 
 
 # Magnetic Prandtl number
-Pm = 0.
+Pm = 1.e+1
 # Lundquist number
 Lu = 2000.
 # Radial magnetic field profile
