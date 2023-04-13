@@ -12,15 +12,15 @@ import matplotlib.pyplot as plt
 
 
 save_eigen = True
-save_eigen_fname = "./output/eigenmodes_Pm0_cheby1000_v2"
-# save_pattern_fname = "./output/specspy_TO_Pm0_cheby1000"
+save_eigen_fname = "./output/eigenmodes_1D/eigenmodes_Pm1e+1_noslip_cheby500_redvec"
+# save_pattern_fname = "./output/specspy_TO_noslip_cheby500"
 save_pattern_fname = None
 
 # Scipy.sparse.eigs seem to require both matrices nonsingular in generalized eigenproblem
 sparse_solver = False
 
 # whether to use memory-efficient, but not fully scipy-vectorized version
-save_memory = True
+save_memory = False
 
 
 """Physics setup"""
@@ -33,7 +33,7 @@ import config_TO as cfg
 """Spectral setup"""
 
 # Truncation degree
-N_trunc = 1000
+N_trunc = 500
 # Quadrature
 n_quad = N_trunc + 4
 xi_quad, wt_quad = special.roots_chebyt(n_quad)
@@ -69,64 +69,79 @@ if save_memory:
     for i in range(N_trunc):
         for j in range(N_trunc):
             
-            kuu_quad = Tn[i, :]*(cfg.k_uu2(s_quad)*dTn_ds2[j, :] + cfg.k_uu1(s_quad)*dTn_ds[j, :])
-            Kuu[i, j] = np.sum(jac*wt_quad*kuu_quad)
-            kub_quad = Tn[i, :]*(0*cfg.k_ub1(s_quad)*dTn_ds[j, :] + cfg.k_ub0(s_quad)*Tn[j, :])
-            Kub[i, j] = np.sum(jac*wt_quad*kub_quad)
-            kbu_quad = Tn[i, :]*(cfg.k_bu1(s_quad)*dTn_ds[j, :])
-            Kbu[i, j] = np.sum(jac*wt_quad*kbu_quad)
-            kbb_quad = Tn[i, :]*(cfg.k_bb2(s_quad)*dTn_ds2[j, :] + cfg.k_bb1(s_quad)*dTn_ds[j, :] + cfg.k_bb0(s_quad)*Tn[j, :])
-            Kbb[i, j] = np.sum(jac*wt_quad*kbb_quad)
+            # kuu_quad = Tn[i, :]*(cfg.k_uu2(s_quad)*dTn_ds2[j, :] + cfg.k_uu1(s_quad)*dTn_ds[j, :])
+            # Kuu[i, j] = np.sum(jac*wt_quad*kuu_quad)
+            # kub_quad = Tn[i, :]*(cfg.k_ub1(s_quad)*dTn_ds[j, :] + cfg.k_ub0(s_quad)*Tn[j, :])
+            # Kub[i, j] = np.sum(jac*wt_quad*kub_quad)
+            # kbu_quad = Tn[i, :]*(cfg.k_bu1(s_quad)*dTn_ds[j, :])
+            # Kbu[i, j] = np.sum(jac*wt_quad*kbu_quad)
+            # kbb_quad = Tn[i, :]*(cfg.k_bb2(s_quad)*dTn_ds2[j, :] + cfg.k_bb1(s_quad)*dTn_ds[j, :] + cfg.k_bb0(s_quad)*Tn[j, :])
+            # Kbb[i, j] = np.sum(jac*wt_quad*kbb_quad)
             
-            Mu[i, j] = np.sum(jac*wt_quad*Tn[i, :]*cfg.m_u(s_quad)*Tn[j, :])
-            Mb[i, j] = np.sum(jac*wt_quad*Tn[i, :]*cfg.m_b(s_quad)*Tn[j, :])
-
+            # Mu[i, j] = np.sum(jac*wt_quad*Tn[i, :]*cfg.m_u(s_quad)*Tn[j, :])
+            # Mb[i, j] = np.sum(jac*wt_quad*Tn[i, :]*cfg.m_b(s_quad)*Tn[j, :])
+            
+            
+            Kuu[i, j] = np.sum(jac*wt_quad*cfg.k_uu2(s_quad)*(Tn[i, :]*dTn_ds2[j, :])) + \
+                np.sum(jac*wt_quad*cfg.k_uu1(s_quad)*(Tn[i, :]*dTn_ds[j, :]))
+            Kub[i, j] = np.sum(jac*wt_quad*cfg.k_ub1(s_quad)*(Tn[i, :]*dTn_ds[j, :])) + \
+                np.sum(jac*wt_quad*cfg.k_ub0(s_quad)*(Tn[i, :]*Tn[j, :]))
+            Kbu[i, j] = np.sum(jac*wt_quad*cfg.k_bu1(s_quad)*(Tn[i, :]*dTn_ds[j, :]))
+            Kbb[i, j] = np.sum(jac*wt_quad*cfg.k_bb2(s_quad)*(Tn[i, :]*dTn_ds2[j, :])) + \
+                np.sum(jac*wt_quad*cfg.k_bb1(s_quad)*(Tn[i, :]*dTn_ds[j, :])) + \
+                np.sum(jac*wt_quad*cfg.k_bb0(s_quad)*(Tn[i, :]*Tn[j, :]))
+            
+            Mu[i, j] = np.sum(jac*wt_quad*cfg.m_u(s_quad)*(Tn[i, :]*Tn[j, :]))
+            Mb[i, j] = np.sum(jac*wt_quad*cfg.m_b(s_quad)*(Tn[i, :]*Tn[j, :]))
+    
 else:
-    Kuu2 = cfg.k_uu2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
-    Kuu2 = np.sum(jac*wt_quad*Kuu2, axis=-1)
+    # Kuu2 = cfg.k_uu2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
+    # Kuu1 = cfg.k_uu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    
+    # Kuu = np.sum(jac*wt_quad*Kuu2, axis=-1) + np.sum(jac*wt_quad*Kuu1, axis=-1)
 
-    Kuu1 = cfg.k_uu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-    Kuu1 = np.sum(jac*wt_quad*Kuu1, axis=-1)
+    # Kub1 = cfg.k_ub1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    # Kub0 = cfg.k_ub0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    
+    # Kub = np.sum(jac*wt_quad*Kub1, axis=-1) + np.sum(jac*wt_quad*Kub0, axis=-1)
 
-    Kub1 = cfg.k_ub1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-    Kub1 = np.sum(jac*wt_quad*Kub1, axis=-1)
+    # Kbu = cfg.k_bu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    # Kbu = np.sum(jac*wt_quad*Kbu, axis=-1)
 
-    Kub0 = cfg.k_ub0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-    Kub0 = np.sum(jac*wt_quad*Kub0, axis=-1)
+    # Kbb2 = cfg.k_bb2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
+    # Kbb1 = cfg.k_bb1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
+    # Kbb0 = cfg.k_bb0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    
+    # Kbb = np.sum(jac*wt_quad*Kbb2, axis=-1) + np.sum(jac*wt_quad*Kbb1, axis=-1) + np.sum(jac*wt_quad*Kbb0, axis=-1)
 
-    Kbu1 = cfg.k_bu1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-    Kbu1 = np.sum(jac*wt_quad*Kbu1, axis=-1)
+    # Mu = cfg.m_u(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    # Mu = np.sum(jac*wt_quad*Mu, axis=-1)
+    # Mb = cfg.m_b(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
+    # Mb = np.sum(jac*wt_quad*Mb, axis=-1)
+    
+    Kuu = cfg.k_uu2(s_quad)*dTn_ds2 + cfg.k_uu1(s_quad)*dTn_ds
+    Kuu = np.sum((jac*wt_quad*Tn[:, np.newaxis, :])*Kuu[np.newaxis, :, :], axis=-1)
+    print("Kuu assembled")
 
-    Kbb2 = cfg.k_bb2(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds2[np.newaxis, :, :])
-    Kbb2 = np.sum(jac*wt_quad*Kbb2, axis=-1)
+    Kub = cfg.k_ub1(s_quad)*dTn_ds + cfg.k_ub0(s_quad)*Tn
+    Kub = np.sum((jac*wt_quad*Tn[:, np.newaxis, :])*Kub[np.newaxis, :, :], axis=-1)
+    print("Kub assembled")
 
-    Kbb1 = cfg.k_bb1(s_quad)*(Tn[:, np.newaxis, :]*dTn_ds[np.newaxis, :, :])
-    Kbb1 = np.sum(jac*wt_quad*Kbb1, axis=-1)
-
-    Kbb0 = cfg.k_bb0(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-    Kbb0 = np.sum(jac*wt_quad*Kbb0, axis=-1)
-
-    Mu = cfg.m_u(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-    Mu = np.sum(jac*wt_quad*Mu, axis=-1)
-    Mb = cfg.m_b(s_quad)*(Tn[:, np.newaxis, :]*Tn[np.newaxis, :, :])
-    Mb = np.sum(jac*wt_quad*Mb, axis=-1)
+    Kbu = cfg.k_bu1(s_quad)*dTn_ds
+    Kbu = np.sum((jac*wt_quad*Tn[:, np.newaxis, :])*Kbu[np.newaxis, :, :], axis=-1)
+    print("Kbu assembled")
+    
+    Kbb = cfg.k_bb2(s_quad)*dTn_ds2 + cfg.k_bb1(s_quad)*dTn_ds + cfg.k_bb0(s_quad)*Tn
+    Kbb = np.sum((jac*wt_quad*Tn[:, np.newaxis, :])*Kbb[np.newaxis, :, :], axis=-1)
+    print("Kbb assembled")
+    
+    Mu = np.sum((jac*wt_quad*cfg.m_u(s_quad)*Tn[:, np.newaxis, :])*Tn[np.newaxis, :, :], axis=-1)
+    Mb = np.sum((jac*wt_quad*cfg.m_b(s_quad)*Tn[:, np.newaxis, :])*Tn[np.newaxis, :, :], axis=-1)
 
 print("Matrices calculated")
 
-if save_memory:
-    K_mat = np.block([[Kuu, Kub], [Kbu, Kbb]])
-    M_mat = np.block([[Mu, np.zeros((N_trunc, N_trunc))], [np.zeros((N_trunc, N_trunc)), Mb]])
-else:
-    K_mat = np.zeros((2*N_trunc, 2*N_trunc))
-    K_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Kuu2 + Kuu1
-    K_mat[np.ix_(np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kub1 + Kub0
-    K_mat[np.ix_(N_trunc + np.arange(N_trunc), np.arange(N_trunc))] = Kbu1
-    K_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Kbb2 + Kbb1 + Kbb0
-
-    M_mat = np.zeros((2*N_trunc, 2*N_trunc))
-    M_mat[np.ix_(np.arange(N_trunc), np.arange(N_trunc))] = Mu
-    M_mat[np.ix_(N_trunc + np.arange(N_trunc), N_trunc + np.arange(N_trunc))] = Mb
-
+K_mat = np.block([[Kuu, Kub], [Kbu, Kbb]])
+M_mat = np.block([[Mu, np.zeros((N_trunc, N_trunc))], [np.zeros((N_trunc, N_trunc)), Mb]])
 
 print("Matrices assembled")
 
@@ -135,10 +150,14 @@ print("Matrices assembled")
 
 K_mat[[N_trunc-2, N_trunc-1, 2*N_trunc-2, 2*N_trunc-1], :] = 0
 
-# Homogeneous Neumann BC for u
+# Homogeneous Neumann BC at 0, Homogeneous Dirichlet BC at 1 for u
 K_mat[N_trunc-2, :N_trunc] = np.arange(N_trunc)**2/jac
-K_mat[N_trunc-1, :N_trunc] = np.arange(N_trunc)**2/jac
-K_mat[N_trunc-1, :N_trunc:2] *= -1
+K_mat[N_trunc-2, :N_trunc:2] *= -1
+K_mat[N_trunc-1, :N_trunc] = 1
+# Homogeneous Neumann BC for u
+# K_mat[N_trunc-2, :N_trunc] = np.arange(N_trunc)**2/jac
+# K_mat[N_trunc-1, :N_trunc] = np.arange(N_trunc)**2/jac
+# K_mat[N_trunc-1, :N_trunc:2] *= -1
 # Homogeneous Dirichlet BC for b
 K_mat[2*N_trunc-2, N_trunc:] = 1
 K_mat[2*N_trunc-1, N_trunc:] = 1
@@ -164,8 +183,8 @@ print("Time = {:.2f} s".format(end_time - start_time))
 
 import h5py
 
-# np.save("./output/K_mat_vectorized.npy", arr=K_mat)
-# np.save("./output/M_mat_vectorized.npy", arr=M_mat)
+# np.save("./output/K_mat_vectorized_v3.npy", arr=K_mat)
+# np.save("./output/M_mat_vectorized_v3.npy", arr=M_mat)
 
 if save_eigen:
     with h5py.File(save_eigen_fname + ".h5", 'x') as f_write:
