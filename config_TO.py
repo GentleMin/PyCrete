@@ -6,9 +6,10 @@ import numpy as np
 
 
 # Magnetic Prandtl number
-Pm = 1.e+1
+Pm = 1.e-1
 # Lundquist number
-Lu = 2000.
+Lu = 1000.
+
 # Radial magnetic field profile
 def Bs2_S1(s):
     return 63/184/np.pi*s**2*(1 - s**2)
@@ -56,3 +57,12 @@ def dk_uu2(s):
 
 def dk_bb2(s):
     return np.ones(s.shape)/Lu
+
+
+"""Introducing boundary condition"""
+
+# Magnetic field boundary
+bc_b = "insulating"
+
+# Velocity field boundary
+bc_u = "noslip"

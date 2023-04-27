@@ -5,14 +5,16 @@ Spectral method implementation
 
 
 import numpy as np
-import time
+import time, os, yaml
 from scipy import linalg, sparse, special
 from scipy.sparse import linalg as splinalg
 import matplotlib.pyplot as plt
 
 
-save_eigen = True
-save_eigen_fname = "./output/eigenmodes_1D/eigenmodes_Pm1e+1_noslip_cheby500_redvec"
+output = True
+# output_dir = "./output/eigenmodes_1D/eigenmodes_Pm0_Lu2000_freeslip/"
+autogen_output_dir = True
+
 # save_pattern_fname = "./output/specspy_TO_noslip_cheby500"
 save_pattern_fname = None
 
@@ -28,6 +30,9 @@ save_memory = False
 s_range = np.array([0, 1])
 Ls = s_range[1] - s_range[0]
 import config_TO as cfg
+
+if autogen_output_dir:
+    output_dir = os.path.join("./output/eigenmodes_1D", "Pm{:.0e}__Lu{:.0e}__{}".format(cfg.Pm, cfg.Lu, cfg.bc_u))
 
 
 """Spectral setup"""
@@ -150,18 +155,22 @@ print("Matrices assembled")
 
 K_mat[[N_trunc-2, N_trunc-1, 2*N_trunc-2, 2*N_trunc-1], :] = 0
 
-# Homogeneous Neumann BC at 0, Homogeneous Dirichlet BC at 1 for u
-K_mat[N_trunc-2, :N_trunc] = np.arange(N_trunc)**2/jac
-K_mat[N_trunc-2, :N_trunc:2] *= -1
-K_mat[N_trunc-1, :N_trunc] = 1
-# Homogeneous Neumann BC for u
-# K_mat[N_trunc-2, :N_trunc] = np.arange(N_trunc)**2/jac
-# K_mat[N_trunc-1, :N_trunc] = np.arange(N_trunc)**2/jac
-# K_mat[N_trunc-1, :N_trunc:2] *= -1
-# Homogeneous Dirichlet BC for b
-K_mat[2*N_trunc-2, N_trunc:] = 1
-K_mat[2*N_trunc-1, N_trunc:] = 1
-K_mat[2*N_trunc-1, N_trunc::2] *= -1
+if cfg.bc_u == "noslip":
+    # Homogeneous Dirichlet BC at 1 for u
+    K_mat[N_trunc-2, :N_trunc] = np.arange(N_trunc)**2/jac
+    K_mat[N_trunc-2, :N_trunc:2] *= -1
+    K_mat[N_trunc-1, :N_trunc] = 1
+elif cfg.bc_u == "freeslip":
+    # Homogeneous Neumann BC for u
+    K_mat[N_trunc-2, :N_trunc] = np.arange(N_trunc)**2/jac
+    K_mat[N_trunc-1, :N_trunc] = np.arange(N_trunc)**2/jac
+    K_mat[N_trunc-1, :N_trunc:2] *= -1
+
+if cfg.bc_b == "insulating":
+    # Homogeneous Dirichlet BC for b
+    K_mat[2*N_trunc-2, N_trunc:] = 1
+    K_mat[2*N_trunc-1, N_trunc:] = 1
+    K_mat[2*N_trunc-1, N_trunc::2] *= -1
 
 M_mat[[N_trunc-2, N_trunc-1, 2*N_trunc-2, 2*N_trunc-1], :] = 0
 
@@ -186,12 +195,26 @@ import h5py
 # np.save("./output/K_mat_vectorized_v3.npy", arr=K_mat)
 # np.save("./output/M_mat_vectorized_v3.npy", arr=M_mat)
 
-if save_eigen:
-    with h5py.File(save_eigen_fname + ".h5", 'x') as f_write:
+if output:
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    save_fname = "cheby{:d}_redvec.h5".format(N_trunc)
+    with h5py.File(os.path.join(output_dir, save_fname), 'x') as f_write:
         idx_sort = np.argsort(w)
         f_write.create_dataset("degrees", data=np.arange(N_trunc))
         f_write.create_dataset("eigenvals", data=w[idx_sort])
         f_write.create_dataset("eigenfuns", data=v[:, idx_sort])
+    cfg_fname = "cheby{:d}_redvec.yaml".format(N_trunc)
+    with open(os.path.join(output_dir, cfg_fname), 'x') as f_cfg:
+        yaml.dump(data={"Lu": cfg.Lu, 
+                        "Pm": cfg.Pm, 
+                        "Truncation degree": N_trunc, 
+                        "Magnetic BC": cfg.bc_b, 
+                        "Velocity BC": cfg.bc_u, 
+                        "Method": "Classical Chebyshev, classical tau", 
+                        "Sparse solver": sparse_solver}, 
+                  stream=f_cfg, default_flow_style=False, sort_keys=False)
+    print("Eigensolutions saved to " + output_dir)
 
 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 6))
 ax = axes[0]
