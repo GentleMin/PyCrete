@@ -137,7 +137,10 @@ if __name__ == "__main__":
     #                                  out_dir="./output/eigenmodes_1D/eigenmodes_Pm1e+1_noslip/cheby500/",
     #                                  uniform_grid=False, n_grid=200)
     
-    routine_plot_eigenmodes_fem(in_name="./output/eigenmodes_1D/eigenmodes_Pm0_freeslip/eigenmodes_Pm0_n100_full.h5",
-                                out_dir="./output/eigenmodes_1D/eigenmodes_Pm0_freeslip/fem100/")
+    # routine_plot_eigenmodes_fem(in_name="./output/eigenmodes_1D/eigenmodes_Pm0_freeslip/eigenmodes_Pm0_n100_full.h5",
+    #                             out_dir="./output/eigenmodes_1D/eigenmodes_Pm0_freeslip/fem100/")
 
+    routine_plot_eigenmodes_spectral(in_name="./output/eigenmodes_1D/Pm1e-01__Lu1e+03__noslip/cheby500_redvec.h5",
+                                     out_dir="./output/eigenmodes_1D/Pm1e-01__Lu1e+03__noslip/cheby500_redvec/", 
+                                     uniform_grid=False, n_grid=200)
     
