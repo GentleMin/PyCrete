@@ -11,15 +11,15 @@ from . import pinn_core as core
 class EigenNet1D(core.PhysicsInformedNet):
     """Eigenvalue-eigenfunction solver for general 1D system
     
-    :param x_range: Tensor, lower and upper limits of the physical domain
+    :param domain: Tensor, lower and upper limits of the physical domain
     :param n_int: int, number of interior sampling points
     :param bc_weight: float, regularization strength of the boundary loss
     """
     
-    def __init__(self, x_range, n_int, bc_weight=1) -> None:
-        super().__init__(x_range, n_int, bc_weight)
-        self.jac = (self.x_range[0, 1] - self.x_range[0, 0])/2
-        self.train_pt_int = torch.atleast_2d(torch.linspace(self.x_range[0, 0], self.x_range[0, 1], self.n_int)).T
+    def __init__(self, domain, n_int, bc_weight=1) -> None:
+        super().__init__(domain, n_int, bc_weight)
+        self.jac = (self.domain[0, 1] - self.domain[0, 0])/2
+        self.train_pt_int = torch.atleast_2d(torch.linspace(self.domain[0, 0], self.domain[0, 1], self.n_int)).T
     
     def normalize(self, x_input):
         """Normalize physical domain points to [-1, 1]
@@ -27,7 +27,7 @@ class EigenNet1D(core.PhysicsInformedNet):
         :param x_input: Tensor[batch_size, 1], input points in physical domain
         :returns x_normalized: Tensor of the same shape, in [-1, 1]
         """
-        x_normalized = (x_input - self.x_range[0, 0])/self.jac - 1
+        x_normalized = (x_input - self.domain[0, 0])/self.jac - 1
         return x_normalized
     
     def denormalize(self, x_input):
@@ -36,7 +36,7 @@ class EigenNet1D(core.PhysicsInformedNet):
         :param x_input: Tensor[batch_size, 1], input points in [-1, 1]
         :returns x_normalized: Tensor of the same shape, in physical domain
         """
-        x_denormalized = (x_input + 1)*self.jac + self.x_range[0, 0]
+        x_denormalized = (x_input + 1)*self.jac + self.domain[0, 0]
         return x_denormalized
     
     def forward(self, x_input):
@@ -71,18 +71,18 @@ class EigenFuncNN1D(EigenNet1D):
     Abstract class - to be overridden
     
     :param eigval: float, eigenvalue
-    :param x_range: Tensor, lower and upper limits of the physical domain
+    :param domain: Tensor, lower and upper limits of the physical domain
     :param n_int: int, number of interior sampling points
     :param bc_weight: float, regularization strength of the boundary loss
     :param mag_weight: float, regularization strength of the magnitude loss
     """
     
-    def __init__(self, eigval, x_range=torch.tensor([[-1, 1]]), n_int=100, bc_weight=1., mag_weight=1.) -> None:
+    def __init__(self, eigval, domain=torch.tensor([[-1, 1]]), n_int=100, bc_weight=1., mag_weight=1.) -> None:
         
-        super().__init__(x_range=x_range, n_int=n_int, bc_weight=bc_weight)
+        super().__init__(domain=domain, n_int=n_int, bc_weight=bc_weight)
         self.eigval = eigval
         self.mag_weight = mag_weight
-        self.sobol_engine = torch.quasirandom.SobolEngine(dimension=self.x_range.shape[0])
+        self.sobol_engine = torch.quasirandom.SobolEngine(dimension=self.domain.shape[0])
         self.train_pt_int = self.sobol_to_physics_dom(self.sobol_engine.draw(self.n_int))
     
     def sobol_to_physics_dom(self, sobol_samples):
@@ -91,7 +91,7 @@ class EigenFuncNN1D(EigenNet1D):
         :param sobol_samples: Tensor, Sobol samples, within range [0, 1]
         :returns physics_samples: Tensor, Sobol samples converted to physical domain
         """
-        physics_samples = sobol_samples*(self.x_range[0, 1] - self.x_range[0, 0]) + self.x_range[0, 0]
+        physics_samples = sobol_samples*(self.domain[0, 1] - self.domain[0, 0]) + self.domain[0, 0]
         return physics_samples
     
     def boundary_loss(self):
@@ -100,8 +100,8 @@ class EigenFuncNN1D(EigenNet1D):
         effectively enforcing homogeneous Dirichlet boundary condition
         can be overridden
         """
-        val_bc = self.forward(self.x_range.T)
-        val_train = torch.zeros(self.x_range.T.shape)
+        val_bc = self.forward(self.domain.T)
+        val_train = torch.zeros(self.domain.T.shape)
         loss_bc = torch.mean(torch.abs(val_bc - val_train)**2)
         return loss_bc
     
@@ -130,7 +130,7 @@ class EigenSolveNet1D(EigenNet1D):
     This class builds a neural network pipeline that aims to solve the eigenvalue-eigenfunction pair simultaneously
     Abstract class - to be overridden
     
-    :param x_range: Tensor, lower and upper limits of the physical domain
+    :param domain: Tensor, lower and upper limits of the physical domain
     :param n_int: int, number of interior sampling points
     :param bc_weight: float, regularization strength of the boundary loss
     :param mag_weight: float, regularization strength of the magnitude loss
@@ -138,9 +138,9 @@ class EigenSolveNet1D(EigenNet1D):
     :param scan_floor: float, shift constant in driver term
     """
     
-    def __init__(self, x_range=torch.tensor([[-1, 1]]), n_int=100, bc_weight=1., mag_weight=1., drive_weight=1., scan_floor=0., scan_sign=+1, scan_scale=1.) -> None:
+    def __init__(self, domain=torch.tensor([[-1, 1]]), n_int=100, bc_weight=1., mag_weight=1., drive_weight=1., scan_floor=0., scan_sign=+1, scan_scale=1.) -> None:
         
-        super().__init__(x_range=x_range, n_int=n_int, bc_weight=bc_weight)
+        super().__init__(domain=domain, n_int=n_int, bc_weight=bc_weight)
         self.mag_weight = mag_weight
         self.drive_weight = drive_weight
         self.scan_floor = torch.Tensor([scan_floor, ])
@@ -148,7 +148,7 @@ class EigenSolveNet1D(EigenNet1D):
         self.scan_scale = scan_scale
         self.eigenvalue = torch.Tensor([scan_floor, ])
         self.eigenvalue.requires_grad = True
-        self.sobol_engine = torch.quasirandom.SobolEngine(dimension=self.x_range.shape[0])
+        self.sobol_engine = torch.quasirandom.SobolEngine(dimension=self.domain.shape[0])
         self.train_pt_int = self.sobol_to_physics_dom(self.sobol_engine.draw(self.n_int))
     
     def sobol_to_physics_dom(self, sobol_samples):
@@ -157,7 +157,7 @@ class EigenSolveNet1D(EigenNet1D):
         :param sobol_samples: Tensor, Sobol samples, within range [0, 1]
         :returns physics_samples: Tensor, Sobol samples converted to physical domain
         """
-        physics_samples = sobol_samples*(self.x_range[0, 1] - self.x_range[0, 0]) + self.x_range[0, 0]
+        physics_samples = sobol_samples*(self.domain[0, 1] - self.domain[0, 0]) + self.domain[0, 0]
         return physics_samples
     
     def boundary_loss(self):
@@ -166,8 +166,8 @@ class EigenSolveNet1D(EigenNet1D):
         effectively enforcing homogeneous Dirichlet boundary condition
         can be further overridden
         """
-        val_bc = self.forward(self.x_range.T)
-        val_train = torch.zeros(self.x_range.T.shape)
+        val_bc = self.forward(self.domain.T)
+        val_train = torch.zeros(self.domain.T.shape)
         loss_bc = torch.mean(torch.abs(val_bc - val_train)**2)
         return loss_bc
     
@@ -178,7 +178,7 @@ class EigenSolveNet1D(EigenNet1D):
         
         :param x_int: Tensor[batch_size, 1], interior points in physical domain
         """
-        modulus_squared = (self.x_range[0, 1] - self.x_range[0, 0])*torch.mean(self.forward(x_int)**2)
+        modulus_squared = (self.domain[0, 1] - self.domain[0, 0])*torch.mean(self.forward(x_int)**2)
         return (modulus_squared - 1.)**2
     
     def driver_loss(self):

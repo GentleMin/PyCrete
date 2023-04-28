@@ -27,9 +27,9 @@ class PhysicsInformedNet:
     """Abstract base class for PINN
     """
     
-    def __init__(self, x_range, n_int, bc_weight=1.) -> None:
+    def __init__(self, domain, n_int, bc_weight=1.) -> None:
         
-        self.x_range = x_range
+        self.domain = domain
         self.n_int = n_int
         self.bc_weight = bc_weight
     
