@@ -24,6 +24,9 @@ sparse_solver = False
 # whether to use memory-efficient, but not fully scipy-vectorized version
 save_memory = False
 
+# whether to compute the steady-state solution
+steady_state = False
+
 
 """Physics setup"""
 
@@ -32,7 +35,7 @@ Ls = s_range[1] - s_range[0]
 import config_2phase as cfg
 
 if autogen_output_dir:
-    output_dir = os.path.join("./output/thermal_2phase_1D", "T_evolution")
+    output_dir = os.path.join("./output/thermal_2phase_1D", "T_steady_flux")
 
 
 """Time-stepping setup"""
@@ -137,40 +140,63 @@ plt.show()
 # exit()
 
 
-"""Time stepping"""
+"""Time stepping or steady-state solution"""
 
-t_array = np.arange(0, tmax, dt)
-solution_array = np.zeros((t_array.size, N_trunc*2))
-
-# Initial condition
-solution_array[0][[0, N_trunc]] = 1.
-
-for t_id in range(t_array.size - 1):
-    L_mat = M_mat - dt*K_mat
-    f_vec = M_mat @ solution_array[t_id]
+if steady_state:
     
-    # Boundary conditions
+    L_mat = K_mat
+    f_vec = np.zeros(2*N_trunc)
+
     L_mat[N_trunc-2, :N_trunc] = 1
     L_mat[N_trunc-2, 1:N_trunc:2] *= -1
-    f_vec[N_trunc-2] = cfg.bound_left(t_array[t_id+1])
-    
+    f_vec[N_trunc-2] = 1.
+
     L_mat[N_trunc-1, :N_trunc] = np.arange(N_trunc)**2/jac
-    f_vec[N_trunc-1] = 0
-    
-    L_mat[2*N_trunc-2, N_trunc:] = np.arange(N_trunc)**2/jac
-    L_mat[2*N_trunc-2, N_trunc::2] *= -1
-    f_vec[2*N_trunc-2] = 0
-    
+    f_vec[N_trunc-1] = -1.
+
+    L_mat[2*N_trunc-2, N_trunc:] = 1
+    L_mat[2*N_trunc-2, N_trunc+1::2] *= -1
+    f_vec[2*N_trunc-2] = 0.
+
     L_mat[2*N_trunc-1, N_trunc:] = np.arange(N_trunc)**2/jac
-    f_vec[2*N_trunc-1] = 0
-    
-    # print(f_vec)
-    
-    solution_step = np.linalg.solve(L_mat, f_vec)
-    solution_array[t_id+1, :] = solution_step
-    
-    if (t_id + 1) % step_verbose == 0:
-        print("{:d}/{:d} steps solved.".format(t_id + 1, t_array.size))
+    f_vec[2*N_trunc-1] = 1.
+
+    solution_array = np.linalg.solve(L_mat, f_vec)
+
+else:
+
+    t_array = np.arange(0, tmax, dt)
+    solution_array = np.zeros((t_array.size, N_trunc*2))
+
+    # Initial condition
+    solution_array[0][[0, N_trunc]] = 1.
+
+    for t_id in range(t_array.size - 1):
+        L_mat = M_mat - dt*K_mat
+        f_vec = M_mat @ solution_array[t_id]
+        
+        # Boundary conditions
+        L_mat[N_trunc-2, :N_trunc] = 1
+        L_mat[N_trunc-2, 1:N_trunc:2] *= -1
+        f_vec[N_trunc-2] = cfg.bound_left(t_array[t_id+1])
+        
+        L_mat[N_trunc-1, :N_trunc] = np.arange(N_trunc)**2/jac
+        f_vec[N_trunc-1] = 0
+        
+        L_mat[2*N_trunc-2, N_trunc:] = np.arange(N_trunc)**2/jac
+        L_mat[2*N_trunc-2, N_trunc::2] *= -1
+        f_vec[2*N_trunc-2] = 0
+        
+        L_mat[2*N_trunc-1, N_trunc:] = np.arange(N_trunc)**2/jac
+        f_vec[2*N_trunc-1] = 0
+        
+        # print(f_vec)
+        
+        solution_step = np.linalg.solve(L_mat, f_vec)
+        solution_array[t_id+1, :] = solution_step
+        
+        if (t_id + 1) % step_verbose == 0:
+            print("{:d}/{:d} steps solved.".format(t_id + 1, t_array.size))
 
 end_time = time.time()
 print("Time = {:.2f} s".format(end_time - start_time))
