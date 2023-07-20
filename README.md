@@ -4,19 +4,28 @@ Under development...
 
 This repo started out as a repo for *Introduction to FEM in Geoscience* block course @ ETH Zurich, Summer 2022.
 
-The following python packages are needed for the environment:
+Dependencies of the modules:
 ```
 NumPy
 SciPy
-Scikit-Learn
 Matplotlib
+Pytorch (only needed for PINNs)
+```
+
+Additional dependencies of the examples
+```
+scikit-learn
+scikit-fmm
 ```
 
 ---
 
 ## Code arrangement
 
-Currently only utilities for 1-D and 2-D finite-element method are added.
+The following utilities are current added:
+- 1-D and 2-D utilities for Finite-Element Method (FEM)
+- 1-D utilities for Spectral Method
+- Utilities for Physics-informed Neural Networks (PINN)
 
 ---
 
